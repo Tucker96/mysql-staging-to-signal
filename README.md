@@ -23,7 +23,17 @@ business analysis — the actual day-to-day work of a data/analytics role.
    - A "SOLUTIONS" section at the bottom — one valid approach, not the only one
 3. Open `course-site.html` (or the published link, if you got one) for the
    same curriculum as an interactive, browsable course with explanations
-   alongside the code.
+   alongside the code — plus a **Console** tab with a real, in-browser SQL
+   editor (SQLite compiled to WebAssembly, runs entirely client-side, no
+   server or account needed). Click "Try it in Console" on any lesson's code
+   block to run it live, or write your own queries from scratch.
+   - Upload or paste your own "mini databases" (a `.sql` script or a
+     `.sqlite` file) via the Console's **+ Upload / paste a database**
+     button — handy for practicing against new datasets as you generate or
+     find them.
+   - The console runs SQLite, not MySQL — a short dialect cheat-sheet in the
+     Console's sidebar covers the handful of MySQL-only things (like
+     `STR_TO_DATE` or stored procedures) that don't translate directly.
 
 ## Curriculum
 
