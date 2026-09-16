@@ -1,0 +1,674 @@
+<title>Staging to Signal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+  :root{
+    --bg:#eef2f4;
+    --surface:#ffffff;
+    --surface-2:#e3e9ec;
+    --ink:#0f1c22;
+    --ink-soft:#4c5d64;
+    --ink-faint:#809198;
+    --line:#d3dbdf;
+    --accent:#0f766e;
+    --accent-ink:#ffffff;
+    --accent-soft:#dcf1ee;
+    --amber:#a9631a;
+    --amber-soft:#f6e6d3;
+    --code-bg:#0d1a1e;
+    --code-ink:#d9ece9;
+    --code-line:#1c2e33;
+    --danger:#9a3b3b;
+    --shadow: 0 1px 2px rgba(15,28,34,.06), 0 8px 24px -12px rgba(15,28,34,.18);
+    --hl-kw:#7dd3c8;
+    --hl-str:#e8c07d;
+    --hl-num:#e8a97d;
+    --hl-com:#6d8d8a;
+    --hl-fn:#9ecbea;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0d1416;
+      --surface:#131e21;
+      --surface-2:#182529;
+      --ink:#e7eff0;
+      --ink-soft:#a9bcc0;
+      --ink-faint:#72878b;
+      --line:#233237;
+      --accent:#4fd6c4;
+      --accent-ink:#08211d;
+      --accent-soft:#123230;
+      --amber:#e3a765;
+      --amber-soft:#2c2015;
+      --code-bg:#0a1213;
+      --code-ink:#d9ece9;
+      --code-line:#1c2a2d;
+      --danger:#e08a8a;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1416;
+    --surface:#131e21;
+    --surface-2:#182529;
+    --ink:#e7eff0;
+    --ink-soft:#a9bcc0;
+    --ink-faint:#72878b;
+    --line:#233237;
+    --accent:#4fd6c4;
+    --accent-ink:#08211d;
+    --accent-soft:#123230;
+    --amber:#e3a765;
+    --amber-soft:#2c2015;
+    --code-bg:#0a1213;
+    --code-ink:#d9ece9;
+    --code-line:#1c2a2d;
+    --danger:#e08a8a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-inline:16px;
+  }
+  a{color:var(--accent);}
+  code, pre, .mono{font-family:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;}
+  h1,h2,h3,h4{text-wrap:balance; font-weight:600; margin:0;}
+
+  .shell{
+    max-width:1180px;
+    margin:0 auto;
+    padding-block:20px 60px;
+  }
+
+  /* ---------- Header ---------- */
+  .top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:24px;
+    flex-wrap:wrap;
+    padding-bottom:20px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:22px;
+  }
+  .brand-eyebrow{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.72rem;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 6px;
+  }
+  .brand-title{
+    font-size:clamp(1.5rem, 1.1rem + 1.6vw, 2.2rem);
+    line-height:1.1;
+    margin:0 0 8px;
+  }
+  .brand-sub{
+    color:var(--ink-soft);
+    max-width:52ch;
+    font-size:.95rem;
+    line-height:1.5;
+    margin:0;
+  }
+  .top-meta{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:10px;
+    min-width:220px;
+  }
+  .progress-wrap{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.78rem;
+    color:var(--ink-soft);
+  }
+  .progress-track{
+    width:150px;
+    height:7px;
+    border-radius:999px;
+    background:var(--surface-2);
+    overflow:hidden;
+    border:1px solid var(--line);
+  }
+  .progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--accent), var(--amber));
+    width:0%;
+    transition:width .3s ease;
+  }
+  .theme-btn{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.72rem;
+    letter-spacing:.04em;
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+    border-radius:999px;
+    padding:6px 12px;
+    cursor:pointer;
+  }
+  .theme-btn:hover{border-color:var(--accent); color:var(--accent);}
+
+  /* ---------- Layout ---------- */
+  .layout{
+    display:grid;
+    grid-template-columns:260px minmax(0,1fr);
+    gap:26px;
+    align-items:start;
+  }
+  @media (max-width: 860px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    position:sticky;
+    top:calc(env(safe-area-inset-top,0px) + 16px);
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:10px;
+    box-shadow:var(--shadow);
+    max-height:calc(100vh - 40px);
+    overflow-y:auto;
+  }
+  @media (max-width: 860px){
+    .sidebar{position:static; max-height:none;}
+  }
+  .nav-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    text-align:left;
+    background:none;
+    border:none;
+    border-radius:9px;
+    padding:9px 10px;
+    cursor:pointer;
+    color:var(--ink);
+    font-family:inherit;
+    font-size:.86rem;
+  }
+  .nav-item:hover{background:var(--surface-2);}
+  .nav-item.active{background:var(--accent-soft); color:var(--accent);}
+  .nav-num{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.72rem;
+    color:var(--ink-faint);
+    width:20px;
+    flex:none;
+  }
+  .nav-item.active .nav-num{color:var(--accent);}
+  .nav-check{
+    flex:none;
+    width:16px; height:16px;
+    border-radius:5px;
+    border:1.5px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px;
+    color:transparent;
+  }
+  .nav-check.done{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  .nav-label{flex:1; line-height:1.25;}
+  .nav-tag{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.62rem;
+    color:var(--ink-faint);
+    display:block;
+  }
+
+  /* ---------- Main content ---------- */
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:28px clamp(18px,3vw,38px);
+    box-shadow:var(--shadow);
+    min-width:0;
+  }
+  .mod-eyebrow{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.75rem;
+    color:var(--accent);
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    margin-bottom:8px;
+  }
+  .mod-title{font-size:clamp(1.3rem,1.05rem+1vw,1.7rem); margin-bottom:6px;}
+  .mod-desc{color:var(--ink-soft); line-height:1.6; max-width:66ch; margin-bottom:18px;}
+  .mod-facts{
+    display:flex; flex-wrap:wrap; gap:8px;
+    margin-bottom:24px;
+  }
+  .fact{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.72rem;
+    color:var(--ink-soft);
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:4px 10px;
+  }
+  .complete-btn{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.78rem;
+    background:var(--surface);
+    border:1px solid var(--accent);
+    color:var(--accent);
+    border-radius:999px;
+    padding:7px 14px;
+    cursor:pointer;
+    margin-bottom:26px;
+  }
+  .complete-btn.done{background:var(--accent); color:var(--accent-ink);}
+
+  .section{margin-bottom:26px;}
+  .section h3{
+    font-size:1rem;
+    margin-bottom:8px;
+    display:flex; align-items:baseline; gap:8px;
+  }
+  .section h3 .num{color:var(--amber); font-family:"IBM Plex Mono",monospace; font-size:.8rem;}
+  .section p{color:var(--ink); line-height:1.65; margin:0 0 10px; max-width:70ch;}
+  .section ul{margin:0 0 10px; padding-left:1.2em; color:var(--ink); line-height:1.6;}
+  .section li{margin-bottom:4px;}
+
+  pre.code{
+    background:var(--code-bg);
+    color:var(--code-ink);
+    border:1px solid var(--code-line);
+    border-radius:11px;
+    padding:14px 16px;
+    overflow-x:auto;
+    font-size:.82rem;
+    line-height:1.55;
+    margin:0 0 14px;
+  }
+  pre.code code{font-family:"IBM Plex Mono", monospace; white-space:pre;}
+  .hljs-keyword,.hljs-built_in{color:var(--hl-kw); font-weight:600;}
+  .hljs-string{color:var(--hl-str);}
+  .hljs-number{color:var(--hl-num);}
+  .hljs-comment{color:var(--hl-com); font-style:italic;}
+  .hljs-title.function_, .hljs-function{color:var(--hl-fn);}
+  .hljs-operator, .hljs-punctuation{color:var(--code-ink);}
+
+  .file-chip{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.76rem;
+    color:var(--ink-soft);
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 10px;
+  }
+  .file-chip b{color:var(--ink); font-weight:600;}
+
+  details.exwrap{
+    border:1px dashed var(--line);
+    border-radius:11px;
+    padding:2px 14px;
+    margin-bottom:12px;
+    background:var(--surface-2);
+  }
+  details.exwrap > summary{
+    cursor:pointer;
+    padding:10px 0;
+    font-size:.85rem;
+    font-weight:600;
+    color:var(--amber);
+    list-style:none;
+    display:flex; align-items:center; gap:8px;
+  }
+  details.exwrap > summary::-webkit-details-marker{display:none;}
+  details.exwrap > summary::before{content:"▸"; transition:transform .15s;}
+  details.exwrap[open] > summary::before{transform:rotate(90deg);}
+  details.exwrap .exbody{padding-bottom:12px; color:var(--ink); line-height:1.6;}
+  details.exwrap .exbody ol{padding-left:1.2em; margin:0;}
+  details.exwrap .exbody li{margin-bottom:6px;}
+
+  .prevnext{
+    display:flex; justify-content:space-between; gap:12px;
+    margin-top:8px; flex-wrap:wrap;
+  }
+  .navbtn{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.78rem;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--ink);
+    border-radius:10px;
+    padding:9px 14px;
+    cursor:pointer;
+    flex:1;
+    min-width:140px;
+    text-align:left;
+  }
+  .navbtn:hover{border-color:var(--accent);}
+  .navbtn small{display:block; color:var(--ink-faint); font-size:.65rem; margin-bottom:2px;}
+  .navbtn.next{text-align:right;}
+
+  .schema-note{
+    display:flex; gap:10px; align-items:flex-start;
+    background:var(--amber-soft);
+    border:1px solid var(--line);
+    border-radius:11px;
+    padding:12px 14px;
+    margin-bottom:20px;
+    font-size:.85rem;
+    color:var(--ink);
+    line-height:1.55;
+  }
+  .schema-note .dot{color:var(--amber); font-family:"IBM Plex Mono",monospace; font-weight:700;}
+
+  ::selection{background:var(--accent-soft); color:var(--ink);}
+</style>
+
+<div class="shell">
+
+  <div class="top">
+    <div>
+      <p class="brand-eyebrow">retail_academy · self-paced</p>
+      <h1 class="brand-title">Staging to Signal</h1>
+      <p class="brand-sub">A full MySQL course built around one real workflow: take a messy raw export, clean it, load it into a normalized production schema, and turn it into an EDA report a manager would read.</p>
+    </div>
+    <div class="top-meta">
+      <div class="progress-wrap">
+        <span id="progress-label">0 / 11 modules</span>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      </div>
+      <button class="theme-btn" id="theme-toggle" type="button">Toggle theme</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar" aria-label="Course modules"></nav>
+    <main class="panel" id="panel"></main>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var MODULES = [
+    {
+      id:"m0", tag:"SETUP", title:"The Dataset: retail_academy",
+      meta:["setup.sql","5 tables + 2 staging tables","runs in ~1s"],
+      desc:"Before any lesson, build the database every module runs against: a small but realistic online retailer with a clean production schema and a deliberately messy staging schema.",
+      note:"Run <code>sql/00_setup_database.sql</code> in MySQL Workbench or the CLI first. Every other module assumes this schema already exists.",
+      sections:[
+        {h:"Production schema", body:"<p>Five normalized tables, each storing one fact exactly once — the theme you'll come back to all course:</p><ul><li><b>customers</b> — one row per person, with signup date and country</li><li><b>products</b> — catalog, price, stock</li><li><b>employees</b> — self-referencing manager_id, for self-join lessons later</li><li><b>orders</b> — one row per order, linked to a customer</li><li><b>order_items</b> — the line items on each order, linked to a product</li></ul>"},
+        {h:"Staging schema", body:"<p>Two tables that look like a raw CSV export: everything is text, nothing is validated, and there are duplicates, blank rows, and inconsistent casing on purpose — <code>stg_customers_raw</code> and <code>stg_orders_raw</code>. You'll clean these in Module 6 and load them into production in Module 7.</p>",
+          code:"CREATE TABLE stg_orders_raw (\n    raw_id         INT AUTO_INCREMENT PRIMARY KEY,\n    customer_email VARCHAR(150),\n    order_date_txt VARCHAR(40),   -- '10/01/2022' as plain text\n    status_txt     VARCHAR(40),   -- ' Pending ', 'DELIVERED', ...\n    product_name   VARCHAR(150),\n    qty_txt        VARCHAR(20)\n);"}
+      ]
+    },
+    {
+      id:"m1", tag:"MODULE 01", title:"Fundamentals",
+      meta:["01_fundamentals.sql","5 exercises","Beginner"],
+      desc:"How a query actually executes, and the core vocabulary: SELECT, WHERE, ORDER BY, LIMIT, DISTINCT.",
+      sections:[
+        {h:"Reading order vs. typing order", body:"<p>You type a query as SELECT ... FROM ... WHERE ... but MySQL evaluates it as <b>FROM &rarr; WHERE &rarr; GROUP BY &rarr; HAVING &rarr; SELECT &rarr; ORDER BY &rarr; LIMIT</b>. Keeping that order in your head explains most “why can't I reference that alias here” errors later in the course."},
+        {h:"Filtering & sorting", body:"<p>WHERE filters individual rows; IN and BETWEEN replace long OR chains; LIKE does pattern matching; NULL is an absence of a value, never compared with = or !=.</p>",
+          code:"SELECT product_name, unit_price\nFROM products\nWHERE category IN ('Furniture','Lifestyle')\n  AND unit_price BETWEEN 10 AND 40\nORDER BY unit_price DESC\nLIMIT 5;"},
+        {h:"Practice", ex:["List every customer's name and country for customers in 'USA' or 'Germany', sorted by last name.","Find the 5 most expensive products (name + price only).","Find every customer whose email contains 'example.com' AND signed up in 2022."]}
+      ]
+    },
+    {
+      id:"m2", tag:"MODULE 02", title:"Schema Design & Naming",
+      meta:["02_schema_design.sql","4 exercises","Beginner"],
+      desc:"Why data gets split across multiple tables, how keys and constraints enforce correctness, and the naming conventions that make a schema self-documenting.",
+      sections:[
+        {h:"Why normalize?", body:"<p>One giant table with customer_name and product_name repeated on every row creates update, insert, and delete anomalies — change an email and you must find and update every duplicate copy, or the data disagrees with itself. Splitting into customers / products / orders / order_items means every fact is stored exactly once.</p>"},
+        {h:"Keys & constraints", body:"<p>A PRIMARY KEY uniquely identifies a row; a FOREIGN KEY points to another table's primary key and MySQL refuses to let it point at nothing. NOT NULL, UNIQUE, DEFAULT, CHECK, and ENUM constrain what a column is allowed to hold — correctness enforced by the database itself, not by hoping the application always gets it right.</p>",
+          code:"ALTER TABLE products\n  ADD CONSTRAINT chk_unit_price_positive CHECK (unit_price >= 0);\n\nALTER TABLE customers\n  ADD COLUMN loyalty_points INT NOT NULL DEFAULT 0;"},
+        {h:"Naming conventions used all course", body:"<ul><li>tables: plural snake_case &mdash; <code>order_items</code></li><li>primary key: <code>&lt;table_singular&gt;_id</code> &mdash; <code>customer_id</code></li><li>foreign key: same name as the primary key it references</li><li>booleans: <code>is_</code> / <code>has_</code> prefix</li><li>staging tables: <code>stg_</code> prefix</li></ul>"},
+        {h:"Practice", ex:["Inspect order_items with DESCRIBE — identify its primary and foreign keys.","Add a NOT NULL sku column to products with a DEFAULT so the ALTER doesn't fail on existing rows.","Explain why order_items stores its own unit_price instead of joining to products.unit_price every time."]}
+      ]
+    },
+    {
+      id:"m3", tag:"MODULE 03", title:"Aggregates, GROUP BY & CASE",
+      meta:["03_core_querying.sql","5 exercises","Beginner"],
+      desc:"Summarizing rows with COUNT/SUM/AVG, bucketing with GROUP BY, filtering groups with HAVING, and branching logic inline with CASE.",
+      sections:[
+        {h:"WHERE vs. HAVING", body:"<p>WHERE filters rows before grouping; HAVING filters the groups that come out of the aggregation. Mixing these up is the single most common GROUP BY mistake.</p>",
+          code:"SELECT o.customer_id, SUM(oi.quantity * oi.unit_price) AS total_spent\nFROM orders o\nJOIN order_items oi ON oi.order_id = o.order_id\nGROUP BY o.customer_id\nHAVING SUM(oi.quantity * oi.unit_price) > 100\nORDER BY total_spent DESC;"},
+        {h:"CASE for bucketing & conditional counting", body:"<p>CASE...WHEN...END works anywhere an expression can go — including inside an aggregate, which is how you count multiple conditions in a single pass over the data instead of running several separate queries.</p>",
+          code:"SELECT\n    COUNT(CASE WHEN status = 'delivered' THEN 1 END) AS delivered,\n    COUNT(CASE WHEN status = 'cancelled' THEN 1 END) AS cancelled,\n    COUNT(*) AS total\nFROM orders;"},
+        {h:"Practice", ex:["Count orders per status value.","Compute the average order value across all orders (one number).","Bucket customers into 'Early' (H1 2022) vs 'New' (H2 2022) signups and count each bucket."]}
+      ]
+    },
+    {
+      id:"m4", tag:"MODULE 04", title:"Joins & Relationships",
+      meta:["04_joins.sql","5 exercises","Intermediate"],
+      desc:"Combining rows across tables with INNER/LEFT/RIGHT joins, chaining three or more tables, and joining a table to itself.",
+      sections:[
+        {h:"INNER vs. LEFT", body:"<p>INNER JOIN keeps only rows that match in both tables. LEFT JOIN keeps every row from the left table regardless of a match — which is exactly how you find things that <i>don't</i> exist on the other side, like customers with zero orders.</p>",
+          code:"SELECT c.customer_id, c.first_name, c.last_name\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.customer_id\nWHERE o.order_id IS NULL;  -- customers with no orders"},
+        {h:"Self joins", body:"<p>A table can be joined to itself to compare rows within it — the classic case is an org chart, where employees.manager_id points back at employees.employee_id.</p>",
+          code:"SELECT e.first_name AS employee, m.first_name AS manager\nFROM employees e\nLEFT JOIN employees m ON m.employee_id = e.manager_id;"},
+        {h:"Practice", ex:["List every product that has never been ordered.","Show each order's customer name, date, and total value in one row.","List every customer with the count of DISTINCT products they've ordered, 0 included."]}
+      ]
+    },
+    {
+      id:"m5", tag:"MODULE 05", title:"Subqueries & Set Operations",
+      meta:["05_subqueries_sets.sql","5 exercises","Intermediate"],
+      desc:"Nesting queries in WHERE, FROM, and SELECT; EXISTS vs. IN; correlated subqueries; and stacking result sets with UNION.",
+      sections:[
+        {h:"EXISTS over NOT IN", body:"<p>NOT IN silently returns zero rows if the subquery's list contains even one NULL — a classic, hard-to-spot bug. NOT EXISTS doesn't have that failure mode and is usually just as fast or faster, since it can stop at the first match.</p>",
+          code:"SELECT c.first_name, c.last_name\nFROM customers c\nWHERE NOT EXISTS (\n    SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id\n);"},
+        {h:"Correlated subqueries & derived tables", body:"<p>A correlated subquery references the outer row and re-runs per row — useful for “each customer's most recent order.” A subquery in FROM (a derived table) lets you filter or join on top of an aggregated result.</p>"},
+        {h:"Practice", ex:["Find products never sold, using NOT EXISTS instead of a LEFT JOIN.","Find orders whose total is above the average order value.","Build one combined list: active customers labeled 'customer' UNIONed with Sales employees labeled 'sales_rep'."]}
+      ]
+    },
+    {
+      id:"m6", tag:"MODULE 06", title:"Data Cleaning",
+      meta:["06_data_cleaning.sql","4 exercises","Intermediate"],
+      desc:"Standardizing messy text, parsing text dates into real DATE values, handling NULLs and blanks, and finding duplicates — directly on stg_customers_raw and stg_orders_raw.",
+      note:"A blank string <code>''</code> is not NULL. Every cleaning query in this module checks for both.",
+      sections:[
+        {h:"String & date cleanup", body:"<p>TRIM, LOWER/UPPER, and SUBSTRING_INDEX normalize free text; STR_TO_DATE turns a text date like <code>'10/01/2022'</code> into a real MySQL DATE using a format string that matches what's actually in the data.</p>",
+          code:"SELECT\n    signup_txt,\n    STR_TO_DATE(signup_txt, '%m/%d/%Y') AS signup_date_parsed\nFROM stg_customers_raw\nWHERE TRIM(signup_txt) != '';"},
+        {h:"Finding duplicates with ROW_NUMBER", body:"<p>GROUP BY + HAVING COUNT(*) &gt; 1 tells you duplicates exist. ROW_NUMBER() OVER (PARTITION BY ... ORDER BY raw_id) tags every row with its rank inside its duplicate group, so you can later keep only rank 1 — the technique Module 7's cleaning view is built on.</p>",
+          code:"SELECT raw_id, full_name, email_addr,\n    ROW_NUMBER() OVER (\n        PARTITION BY LOWER(TRIM(email_addr))\n        ORDER BY raw_id\n    ) AS dup_rank\nFROM stg_customers_raw\nWHERE TRIM(email_addr) != '';"},
+        {h:"Practice", ex:["Clean stg_orders_raw's status, date, and quantity columns into real types in one query.","Identify duplicate rows in stg_orders_raw sharing email + date + product.","Using ROW_NUMBER, return only one copy of each duplicate group."]}
+      ]
+    },
+    {
+      id:"m7", tag:"MODULE 07", title:"Staging → Production (ETL)",
+      meta:["07_staging_to_production.sql","3 exercises","Advanced"],
+      desc:"Why real teams separate staging from production, loading cleaned data with INSERT...SELECT, upserts, and wrapping multi-step loads in transactions.",
+      sections:[
+        {h:"A clean-staging view as a reusable layer", body:"<p>A VIEW is a saved query you can SELECT from like a table — it re-runs the underlying logic every time, which makes it a perfect reusable “cleaning layer” between raw staging and production.</p>",
+          code:"CREATE OR REPLACE VIEW vw_stg_customers_clean AS\nSELECT\n    raw_id,\n    TRIM(full_name) AS full_name,\n    LOWER(TRIM(email_addr)) AS email,\n    STR_TO_DATE(TRIM(signup_txt), '%m/%d/%Y') AS signup_date,\n    ROW_NUMBER() OVER (\n        PARTITION BY LOWER(TRIM(email_addr)) ORDER BY raw_id\n    ) AS dup_rank\nFROM stg_customers_raw\nWHERE TRIM(full_name) != '' AND TRIM(email_addr) != '';"},
+        {h:"Idempotent loads", body:"<p>Pipelines get re-run — retries, backfills, a scheduler that fired twice. An INSERT ... SELECT that checks <code>NOT EXISTS</code> against production by a stable business key (email, not an ID staging can't know) is safe to run more than once without duplicating data. ON DUPLICATE KEY UPDATE gives you the same safety for an insert-or-update ('upsert') in a single statement.</p>"},
+        {h:"Transactions", body:"<p>START TRANSACTION / COMMIT / ROLLBACK make a multi-statement load all-or-nothing, so a failure halfway through never leaves the database half-loaded.</p>"},
+        {h:"Practice", ex:["Build vw_stg_orders_clean: trimmed/lowercased status, parsed date, integer quantity, duplicate ranking.","Load new order headers into orders from that view, resolving customer_email to customer_id.","Explain in your own words why NOT EXISTS against production matters even though staging looks clean."]}
+      ]
+    },
+    {
+      id:"m8", tag:"MODULE 08", title:"EDA with Window Functions",
+      meta:["08_eda_window_functions.sql","4 exercises","Advanced"],
+      desc:"The core toolkit for exploratory analysis directly in SQL: ranking, running totals, period-over-period comparisons, and quartile buckets.",
+      sections:[
+        {h:"Ranking & top-N per group", body:"<p>ROW_NUMBER, RANK, and DENSE_RANK number rows without collapsing them the way GROUP BY does. PARTITION BY resets the ranking per group — wrap the result in a subquery and filter the rank to get “top 2 per category.”</p>",
+          code:"SELECT * FROM (\n    SELECT product_name, category, unit_price,\n        RANK() OVER (PARTITION BY category ORDER BY unit_price DESC) AS rnk\n    FROM products\n) ranked\nWHERE rnk <= 2;"},
+        {h:"Running totals & LAG", body:"<p>SUM() OVER (ORDER BY ...) with no partition gives a running total. LAG() looks at the previous row in an ordering — the standard way to compute month-over-month change.</p>",
+          code:"SELECT order_month, monthly_revenue,\n    ROUND((monthly_revenue - LAG(monthly_revenue) OVER (ORDER BY order_month))\n          / LAG(monthly_revenue) OVER (ORDER BY order_month) * 100, 1) AS pct_growth\nFROM monthly_revenue_table;"},
+        {h:"Practice", ex:["Find each customer's first and most recent order date using MIN/MAX OVER, no GROUP BY.","Rank customers by lifetime spend and return the top 5.","For each order, compute what % of that customer's lifetime spend it represents."]}
+      ]
+    },
+    {
+      id:"m9", tag:"MODULE 09", title:"CTEs, Procedures, Indexes & Triggers",
+      meta:["09_advanced_sql.sql","4 exercises","Advanced"],
+      desc:"Readable multi-step queries with WITH, reusable logic in stored procedures, speeding up reads with indexes, and automated side effects with triggers.",
+      sections:[
+        {h:"CTEs over nested subqueries", body:"<p>A CTE is a named, temporary result set referenced later in the same query. Chaining several turns a tangled nested-subquery query into a readable, step-by-step narrative — prefer CTEs once you're past two levels of nesting.</p>",
+          code:"WITH order_totals AS (\n    SELECT o.order_id, o.customer_id,\n           SUM(oi.quantity*oi.unit_price) AS order_total\n    FROM orders o JOIN order_items oi ON oi.order_id=o.order_id\n    GROUP BY o.order_id, o.customer_id\n)\nSELECT customer_id, SUM(order_total) AS lifetime_value\nFROM order_totals\nGROUP BY customer_id\nORDER BY lifetime_value DESC;"},
+        {h:"Indexes & EXPLAIN", body:"<p>An index lets MySQL find matching rows without scanning the whole table. EXPLAIN shows whether a query is using one. Index columns you filter, join, or sort on frequently, on tables with real volume — every index speeds up reads but slows down writes.</p>"},
+        {h:"Practice", ex:["Rewrite the 'top 2 per category' query from Module 8 using a CTE.","Write sp_customer_lifetime_value(IN cust_id INT) as a stored procedure.","Explain which index would help SELECT * FROM order_items WHERE order_id = 42 on a large table."]}
+      ]
+    },
+    {
+      id:"m10", tag:"CAPSTONES", title:"Four Portfolio Projects",
+      meta:["10_capstone_projects.sql","4 projects","Portfolio-ready"],
+      desc:"Everything from Modules 1-9, combined into end-to-end work you can put in a portfolio: schema design, a full ETL pipeline, a written EDA report, and a reporting layer.",
+      sections:[
+        {h:"1 · Schema design — add a Returns feature", body:"<p>Design and build a <code>returns</code> table tied to order_items, following the course's naming conventions, with a status ENUM and a CHECK constraint. Prove it with a return-rate-by-category query.</p>"},
+        {h:"2 · Full staging → production ETL", body:"<p>Module 7 loaded order headers but not line items — finish the pipeline: resolve product names to IDs, wrap the load in a transaction, and verify no staged order is missing its items.</p>"},
+        {h:"3 · Exploratory data analysis report", body:"<p>A 5-part written + SQL analysis: revenue trend with MoM growth, top 5 customers and their share of revenue, top products by revenue vs. units, repeat purchase rate, and category revenue mix.</p>"},
+        {h:"4 · Reporting & performance layer", body:"<p>Turn the ad-hoc EDA queries into reusable assets: a <code>vw_monthly_business_summary</code> view, a parameterized <code>sp_top_customers</code> procedure, and indexes you can justify.</p>"}
+      ]
+    }
+  ];
+
+  var sidebarEl = document.getElementById("sidebar");
+  var panelEl = document.getElementById("panel");
+  var progressFill = document.getElementById("progress-fill");
+  var progressLabel = document.getElementById("progress-label");
+  var themeBtn = document.getElementById("theme-toggle");
+
+  var STORAGE_KEY = "sts_progress_v1";
+  var THEME_KEY = "sts_theme_v1";
+  var current = 0;
+
+  function loadProgress(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){ return {}; }
+  }
+  function saveProgress(p){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }catch(e){}
+  }
+  var progress = loadProgress();
+
+  function applyTheme(t){
+    if(t === "light" || t === "dark"){
+      document.documentElement.setAttribute("data-theme", t);
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  }
+  (function initTheme(){
+    var saved = null;
+    try{ saved = localStorage.getItem(THEME_KEY); }catch(e){}
+    applyTheme(saved);
+  })();
+  themeBtn.addEventListener("click", function(){
+    var cur = document.documentElement.getAttribute("data-theme");
+    var next = cur === "dark" ? "light" : (cur === "light" ? null : "dark");
+    applyTheme(next);
+    try{
+      if(next) localStorage.setItem(THEME_KEY, next);
+      else localStorage.removeItem(THEME_KEY);
+    }catch(e){}
+  });
+
+  function updateProgressBar(){
+    var done = 0;
+    MODULES.forEach(function(m){ if(progress[m.id]) done++; });
+    var pct = Math.round((done / MODULES.length) * 100);
+    progressFill.style.width = pct + "%";
+    progressLabel.textContent = done + " / " + MODULES.length + " modules";
+  }
+
+  function renderSidebar(){
+    sidebarEl.innerHTML = "";
+    MODULES.forEach(function(m, i){
+      var btn = document.createElement("button");
+      btn.className = "nav-item" + (i === current ? " active" : "");
+      btn.type = "button";
+      btn.innerHTML =
+        '<span class="nav-num">' + String(i).padStart(2,"0") + '</span>' +
+        '<span class="nav-check' + (progress[m.id] ? ' done' : '') + '">' + (progress[m.id] ? '✓' : '') + '</span>' +
+        '<span class="nav-label">' + m.title + '<span class="nav-tag">' + m.tag + '</span></span>';
+      btn.addEventListener("click", function(){ current = i; render(); window.scrollTo({top:0, behavior:"smooth"}); });
+      sidebarEl.appendChild(btn);
+    });
+  }
+
+  function escAttr(s){ return s; }
+
+  function renderPanel(){
+    var m = MODULES[current];
+    var html = "";
+    html += '<p class="mod-eyebrow">' + m.tag + '</p>';
+    html += '<h2 class="mod-title">' + m.title + '</h2>';
+    html += '<p class="mod-desc">' + m.desc + '</p>';
+    html += '<div class="mod-facts">' + m.meta.map(function(f){ return '<span class="fact">' + f + '</span>'; }).join("") + '</div>';
+    if(m.note){
+      html += '<div class="schema-note"><span class="dot">&#9679;</span><span>' + m.note + '</span></div>';
+    }
+    html += '<button class="complete-btn' + (progress[m.id] ? ' done' : '') + '" id="mark-complete">' +
+            (progress[m.id] ? "✓ Marked complete" : "Mark module complete") + '</button>';
+
+    m.sections.forEach(function(s, idx){
+      html += '<div class="section">';
+      if(s.h){
+        html += '<h3><span class="num">' + String(idx+1).padStart(2,"0") + '</span>' + s.h + '</h3>';
+      }
+      if(s.body) html += s.body;
+      if(s.code){
+        html += '<pre class="code"><code class="language-sql">' + s.code.replace(/&/g,"&amp;").replace(/</g,"&lt;") + '</code></pre>';
+      }
+      if(s.ex){
+        html += '<details class="exwrap"><summary>Your turn — ' + s.ex.length + ' exercises</summary>' +
+                '<div class="exbody"><ol>' + s.ex.map(function(e){ return '<li>' + e + '</li>'; }).join("") + '</ol>' +
+                '<p style="margin-top:10px;color:var(--ink-soft);font-size:.82rem;">Full solutions are in <span class="file-chip"><b>sql/' + m.meta[0] + '</b></span> — work the exercises yourself before checking.</p></div></details>';
+      }
+      html += '</div>';
+    });
+
+    html += '<div class="prevnext">';
+    if(current > 0){
+      html += '<button class="navbtn prev" id="btn-prev"><small>&larr; previous</small>' + MODULES[current-1].title + '</button>';
+    } else { html += '<span></span>'; }
+    if(current < MODULES.length - 1){
+      html += '<button class="navbtn next" id="btn-next"><small>next &rarr;</small>' + MODULES[current+1].title + '</button>';
+    } else { html += '<span></span>'; }
+    html += '</div>';
+
+    panelEl.innerHTML = html;
+
+    var markBtn = document.getElementById("mark-complete");
+    markBtn.addEventListener("click", function(){
+      progress[m.id] = !progress[m.id];
+      saveProgress(progress);
+      render();
+    });
+    var prevBtn = document.getElementById("btn-prev");
+    if(prevBtn) prevBtn.addEventListener("click", function(){ current--; render(); window.scrollTo({top:0, behavior:"smooth"}); });
+    var nextBtn = document.getElementById("btn-next");
+    if(nextBtn) nextBtn.addEventListener("click", function(){ current++; render(); window.scrollTo({top:0, behavior:"smooth"}); });
+
+    try{
+      if(window.hljs){ panelEl.querySelectorAll("pre code").forEach(function(b){ window.hljs.highlightElement(b); }); }
+    }catch(e){}
+  }
+
+  function render(){
+    renderSidebar();
+    renderPanel();
+    updateProgressBar();
+  }
+
+  render();
+})();
+</script>
