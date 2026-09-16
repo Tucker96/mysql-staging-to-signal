@@ -548,6 +548,44 @@
     cursor:pointer;
   }
   .try-btn:hover{background:var(--accent); color:var(--accent-ink);}
+
+  /* ---------- Exercises: hint + solution reveal ---------- */
+  .ex-list{list-style:none; margin:0; padding:0;}
+  .ex-item{
+    border:1px solid var(--line);
+    border-radius:11px;
+    background:var(--surface);
+    padding:12px 14px;
+    margin-bottom:10px;
+  }
+  .ex-q{font-size:.88rem; color:var(--ink); line-height:1.55; margin-bottom:10px;}
+  .ex-q b{color:var(--amber); font-family:"IBM Plex Mono",monospace; font-weight:600; margin-right:4px;}
+  .ex-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .hint-wrap, .soln-wrap{
+    border:1px dashed var(--line);
+    border-radius:9px;
+    background:var(--surface-2);
+    flex:1 1 160px;
+    min-width:160px;
+  }
+  .hint-wrap > summary, .soln-wrap > summary{
+    cursor:pointer;
+    list-style:none;
+    padding:7px 11px;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:.74rem;
+    font-weight:600;
+    color:var(--ink-soft);
+  }
+  .hint-wrap > summary::-webkit-details-marker, .soln-wrap > summary::-webkit-details-marker{display:none;}
+  .hint-wrap[open] > summary{color:var(--amber);}
+  .soln-wrap[open] > summary{color:var(--accent);}
+  .hint-body{padding:0 12px 12px; font-size:.82rem; color:var(--ink); line-height:1.55;}
+  .soln-body{padding:0 12px 12px;}
+  .soln-body pre.code{margin:6px 0 8px;}
+  .ex-file-note{
+    margin-top:10px; font-size:.78rem; color:var(--ink-soft);
+  }
 </style>
 
 <div class="shell">
@@ -653,7 +691,23 @@
         {h:"Reading order vs. typing order", body:"<p>You type a query as SELECT ... FROM ... WHERE ... but MySQL evaluates it as <b>FROM &rarr; WHERE &rarr; GROUP BY &rarr; HAVING &rarr; SELECT &rarr; ORDER BY &rarr; LIMIT</b>. Keeping that order in your head explains most “why can't I reference that alias here” errors later in the course."},
         {h:"Filtering & sorting", body:"<p>WHERE filters individual rows; IN and BETWEEN replace long OR chains; LIKE does pattern matching; NULL is an absence of a value, never compared with = or !=.</p>",
           code:"SELECT product_name, unit_price\nFROM products\nWHERE category IN ('Furniture','Lifestyle')\n  AND unit_price BETWEEN 10 AND 40\nORDER BY unit_price DESC\nLIMIT 5;"},
-        {h:"Practice", ex:["List every customer's name and country for customers in 'USA' or 'Germany', sorted by last name.","Find the 5 most expensive products (name + price only).","Find every customer whose email contains 'example.com' AND signed up in 2022."]}
+        {h:"Practice", exercises:[
+          {q:"List every customer's first_name, last_name, and country, for customers in either 'USA' or 'Germany', sorted by last_name A-Z.",
+           hint:"IN() replaces a chain of OR conditions for multiple values in the same column; ORDER BY sorts A-Z by default.",
+           solution:"SELECT first_name, last_name, country\nFROM customers\nWHERE country IN ('USA','Germany')\nORDER BY last_name;"},
+          {q:"List all products priced under $20, sorted cheapest first, showing only product_name and unit_price.",
+           hint:"WHERE unit_price < 20 filters the rows; ORDER BY unit_price with no DESC sorts ascending.",
+           solution:"SELECT product_name, unit_price\nFROM products\nWHERE unit_price < 20\nORDER BY unit_price ASC;"},
+          {q:"List the distinct set of departments that appear in the employees table.",
+           hint:"DISTINCT collapses duplicate values down to one row per unique value in that column.",
+           solution:"SELECT DISTINCT department FROM employees;"},
+          {q:"Find the 5 most expensive products overall (name + price only).",
+           hint:"Sort by price descending, then cap the result with LIMIT.",
+           solution:"SELECT product_name, unit_price\nFROM products\nORDER BY unit_price DESC\nLIMIT 5;"},
+          {q:"Find every customer whose email address contains \"example.com\" AND whose signup_date is in 2022.",
+           hint:"LIKE '%text%' matches a substring anywhere in the column; BETWEEN works on dates just like numbers.",
+           solution:"SELECT first_name, last_name, email, signup_date\nFROM customers\nWHERE email LIKE '%example.com%'\n  AND signup_date BETWEEN '2022-01-01' AND '2022-12-31';"}
+        ]}
       ]
     },
     {
@@ -665,7 +719,20 @@
         {h:"Keys & constraints", body:"<p>A PRIMARY KEY uniquely identifies a row; a FOREIGN KEY points to another table's primary key and MySQL refuses to let it point at nothing. NOT NULL, UNIQUE, DEFAULT, CHECK, and ENUM constrain what a column is allowed to hold — correctness enforced by the database itself, not by hoping the application always gets it right.</p>",
           code:"ALTER TABLE products\n  ADD CONSTRAINT chk_unit_price_positive CHECK (unit_price >= 0);\n\nALTER TABLE customers\n  ADD COLUMN loyalty_points INT NOT NULL DEFAULT 0;"},
         {h:"Naming conventions used all course", body:"<ul><li>tables: plural snake_case &mdash; <code>order_items</code></li><li>primary key: <code>&lt;table_singular&gt;_id</code> &mdash; <code>customer_id</code></li><li>foreign key: same name as the primary key it references</li><li>booleans: <code>is_</code> / <code>has_</code> prefix</li><li>staging tables: <code>stg_</code> prefix</li></ul>"},
-        {h:"Practice", ex:["Inspect order_items with DESCRIBE — identify its primary and foreign keys.","Add a NOT NULL sku column to products with a DEFAULT so the ALTER doesn't fail on existing rows.","Explain why order_items stores its own unit_price instead of joining to products.unit_price every time."]}
+        {h:"Practice", exercises:[
+          {q:"Use DESCRIBE to inspect the order_items table. Which column is the primary key? Which two are foreign keys?",
+           hint:"In MySQL, DESCRIBE order_items; lists every column with its key flag. (The Console runs SQLite, which uses PRAGMA table_info instead — shown here.)",
+           solution:"PRAGMA table_info(order_items);\n-- PK: order_item_id (pk=1 in the output).\n-- FKs by convention: order_id -> orders.order_id, product_id -> products.product_id."},
+          {q:"Add a new NOT NULL column sku (VARCHAR(20)) to products with a DEFAULT of 'UNASSIGNED' so the ALTER doesn't fail on existing rows.",
+           hint:"A NOT NULL column added to a table that already has rows needs a DEFAULT value, or MySQL has nothing to put in the existing rows.",
+           solution:"ALTER TABLE products\n  ADD COLUMN sku VARCHAR(20) NOT NULL DEFAULT 'UNASSIGNED';"},
+          {q:"Add a CHECK constraint to order_items ensuring quantity is always greater than 0.",
+           hint:"ALTER TABLE ... ADD CONSTRAINT <name> CHECK (<condition>) attaches a new constraint to an existing table.",
+           solution:"ALTER TABLE order_items\n  ADD CONSTRAINT chk_quantity_positive CHECK (quantity > 0);"},
+          {q:"In your own words, explain why order_items stores its own unit_price instead of just joining to products.unit_price every time.",
+           hint:"Think about what should happen to last month's orders when a product's price changes today.",
+           note:"order_items.unit_price freezes the price at the moment the sale happened. If products.unit_price changes later, historical orders must NOT change value retroactively — otherwise past revenue reports would silently shift every time you ran them. This is the standard \"snapshot the fact at transaction time\" pattern."}
+        ]}
       ]
     },
     {
@@ -677,7 +744,23 @@
           code:"SELECT o.customer_id, SUM(oi.quantity * oi.unit_price) AS total_spent\nFROM orders o\nJOIN order_items oi ON oi.order_id = o.order_id\nGROUP BY o.customer_id\nHAVING SUM(oi.quantity * oi.unit_price) > 100\nORDER BY total_spent DESC;"},
         {h:"CASE for bucketing & conditional counting", body:"<p>CASE...WHEN...END works anywhere an expression can go — including inside an aggregate, which is how you count multiple conditions in a single pass over the data instead of running several separate queries.</p>",
           code:"SELECT\n    COUNT(CASE WHEN status = 'delivered' THEN 1 END) AS delivered,\n    COUNT(CASE WHEN status = 'cancelled' THEN 1 END) AS cancelled,\n    COUNT(*) AS total\nFROM orders;"},
-        {h:"Practice", ex:["Count orders per status value.","Compute the average order value across all orders (one number).","Bucket customers into 'Early' (H1 2022) vs 'New' (H2 2022) signups and count each bucket."]}
+        {h:"Practice", exercises:[
+          {q:"Count how many orders exist per status value.",
+           hint:"GROUP BY the column you want one row per value of, then COUNT(*) inside each group.",
+           solution:"SELECT status, COUNT(*) AS order_count\nFROM orders\nGROUP BY status;"},
+          {q:"Find the average order value (quantity * unit_price, summed per order) across ALL orders — one number.",
+           hint:"First build a derived table of each order's total with GROUP BY order_id, then AVG() that derived table's totals.",
+           solution:"SELECT AVG(order_total) AS avg_order_value\nFROM (\n    SELECT order_id, SUM(quantity * unit_price) AS order_total\n    FROM order_items\n    GROUP BY order_id\n) AS order_totals;"},
+          {q:"List each product category with total units sold, but only show categories that have sold more than 5 total units.",
+           hint:"WHERE can't filter on an aggregate result — that's exactly what HAVING is for, applied after GROUP BY.",
+           solution:"SELECT p.category, SUM(oi.quantity) AS total_units_sold\nFROM order_items oi\nJOIN products p ON p.product_id = oi.product_id\nGROUP BY p.category\nHAVING SUM(oi.quantity) > 5;"},
+          {q:"For each customer, count how many of their orders were 'cancelled' vs everything else, using CASE + COUNT.",
+           hint:"COUNT(CASE WHEN condition THEN 1 END) only counts the rows where the condition is true — NULL rows aren't counted.",
+           solution:"SELECT\n    customer_id,\n    COUNT(CASE WHEN status = 'cancelled' THEN 1 END) AS cancelled_count,\n    COUNT(CASE WHEN status != 'cancelled' THEN 1 END) AS other_count\nFROM orders\nGROUP BY customer_id;"},
+          {q:"Bucket customers into 'New' (signup_date in 2022 H2, i.e. July-Dec) vs 'Early' (H1) using CASE, and count how many fall into each bucket.",
+           hint:"A CASE expression in SELECT can also be used as the GROUP BY key — group by the same expression you built.",
+           solution:"SELECT\n    CASE\n        WHEN signup_date < '2022-07-01' THEN 'Early'\n        ELSE 'New'\n    END AS signup_bucket,\n    COUNT(*) AS num_customers\nFROM customers\nGROUP BY signup_bucket;"}
+        ]}
       ]
     },
     {
@@ -689,7 +772,23 @@
           code:"SELECT c.customer_id, c.first_name, c.last_name\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.customer_id\nWHERE o.order_id IS NULL;  -- customers with no orders"},
         {h:"Self joins", body:"<p>A table can be joined to itself to compare rows within it — the classic case is an org chart, where employees.manager_id points back at employees.employee_id.</p>",
           code:"SELECT e.first_name AS employee, m.first_name AS manager\nFROM employees e\nLEFT JOIN employees m ON m.employee_id = e.manager_id;"},
-        {h:"Practice", ex:["List every product that has never been ordered.","Show each order's customer name, date, and total value in one row.","List every customer with the count of DISTINCT products they've ordered, 0 included."]}
+        {h:"Practice", exercises:[
+          {q:"List every product that has NEVER been ordered (name only).",
+           hint:"LEFT JOIN products to order_items, then filter for the rows where the order_items side came back NULL.",
+           solution:"SELECT p.product_name\nFROM products p\nLEFT JOIN order_items oi ON oi.product_id = p.product_id\nWHERE oi.order_item_id IS NULL;"},
+          {q:"List each employee's name alongside their manager's name AND department, but only for employees in the 'Sales' department.",
+           hint:"Self join employees to itself: match the manager's employee_id against the employee's manager_id.",
+           solution:"SELECT\n    e.first_name AS employee_name,\n    m.first_name AS manager_name,\n    e.department\nFROM employees e\nLEFT JOIN employees m ON m.employee_id = e.manager_id\nWHERE e.department = 'Sales';"},
+          {q:"For every order, show the customer's full name, the order date, and the TOTAL value of that order (quantity * unit_price summed across its items). One row per order.",
+           hint:"Join customers to orders to order_items, then GROUP BY the order so SUM() collapses its items into one total.",
+           solution:"SELECT\n    o.order_id,\n    CONCAT(c.first_name, ' ', c.last_name) AS customer_name,\n    o.order_date,\n    SUM(oi.quantity * oi.unit_price) AS order_total\nFROM orders o\nJOIN customers c    ON c.customer_id = o.customer_id\nJOIN order_items oi ON oi.order_id   = o.order_id\nGROUP BY o.order_id, customer_name, o.order_date;"},
+          {q:"Find all customers who share the same country as at least one other customer.",
+           hint:"Self join customers to itself on country, then exclude the row matching itself by comparing customer_id != customer_id.",
+           solution:"SELECT DISTINCT c1.first_name, c1.last_name, c1.country\nFROM customers c1\nJOIN customers c2 ON c1.country = c2.country AND c1.customer_id != c2.customer_id\nORDER BY c1.country;"},
+          {q:"List every customer and the number of DISTINCT products they've ordered (0 for customers with no orders — use LEFT JOINs all the way through).",
+           hint:"If any join in the chain is an INNER JOIN, customers with zero orders get dropped entirely — keep every join LEFT.",
+           solution:"SELECT\n    c.customer_id,\n    c.first_name,\n    c.last_name,\n    COUNT(DISTINCT oi.product_id) AS distinct_products_ordered\nFROM customers c\nLEFT JOIN orders o       ON o.customer_id = c.customer_id\nLEFT JOIN order_items oi ON oi.order_id   = o.order_id\nGROUP BY c.customer_id, c.first_name, c.last_name;"}
+        ]}
       ]
     },
     {
@@ -700,7 +799,23 @@
         {h:"EXISTS over NOT IN", body:"<p>NOT IN silently returns zero rows if the subquery's list contains even one NULL — a classic, hard-to-spot bug. NOT EXISTS doesn't have that failure mode and is usually just as fast or faster, since it can stop at the first match.</p>",
           code:"SELECT c.first_name, c.last_name\nFROM customers c\nWHERE NOT EXISTS (\n    SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id\n);"},
         {h:"Correlated subqueries & derived tables", body:"<p>A correlated subquery references the outer row and re-runs per row — useful for “each customer's most recent order.” A subquery in FROM (a derived table) lets you filter or join on top of an aggregated result.</p>"},
-        {h:"Practice", ex:["Find products never sold, using NOT EXISTS instead of a LEFT JOIN.","Find orders whose total is above the average order value.","Build one combined list: active customers labeled 'customer' UNIONed with Sales employees labeled 'sales_rep'."]}
+        {h:"Practice", exercises:[
+          {q:"Find all products that have NEVER appeared in order_items, using NOT EXISTS instead of the LEFT JOIN approach from Module 4.",
+           hint:"NOT EXISTS checks whether a correlated subquery returns zero rows for the current outer row.",
+           solution:"SELECT p.product_name\nFROM products p\nWHERE NOT EXISTS (\n    SELECT 1 FROM order_items oi WHERE oi.product_id = p.product_id\n);"},
+          {q:"Find every order whose total value (quantity * unit_price, summed) is greater than the AVERAGE order value across all orders. Show order_id and order_total.",
+           hint:"Build order totals once as a derived table, then compare each row against AVG() computed over that same derived table again.",
+           solution:"SELECT order_id, order_total\nFROM (\n    SELECT order_id, SUM(quantity * unit_price) AS order_total\n    FROM order_items\n    GROUP BY order_id\n) AS totals\nWHERE order_total > (\n    SELECT AVG(order_total) FROM (\n        SELECT order_id, SUM(quantity * unit_price) AS order_total\n        FROM order_items\n        GROUP BY order_id\n    ) AS avg_calc\n);"},
+          {q:"Find customers who have ordered from the 'Electronics' category at least once, using EXISTS with a join inside the subquery.",
+           hint:"The subquery needs to chain orders -> order_items -> products, and correlate customer_id back to the outer customers row.",
+           solution:"SELECT DISTINCT c.first_name, c.last_name\nFROM customers c\nWHERE EXISTS (\n    SELECT 1\n    FROM orders o\n    JOIN order_items oi ON oi.order_id = o.order_id\n    JOIN products p      ON p.product_id = oi.product_id\n    WHERE o.customer_id = c.customer_id\n      AND p.category = 'Electronics'\n);"},
+          {q:"Using a derived table, find the single product category with the highest total revenue (quantity * unit_price summed).",
+           hint:"Aggregate revenue per category first, then ORDER BY revenue DESC and LIMIT 1 on that result.",
+           solution:"SELECT category, total_revenue\nFROM (\n    SELECT p.category, SUM(oi.quantity * oi.unit_price) AS total_revenue\n    FROM order_items oi\n    JOIN products p ON p.product_id = oi.product_id\n    GROUP BY p.category\n) AS category_revenue\nORDER BY total_revenue DESC\nLIMIT 1;"},
+          {q:"Produce one combined list of \"names to contact\": all active customers' full names labeled 'customer', UNIONed with all Sales department employees' full names labeled 'sales_rep'.",
+           hint:"UNION needs the same number of columns, in the same order, from both SELECTs — give each side a literal label column.",
+           solution:"SELECT CONCAT(first_name, ' ', last_name) AS full_name, 'customer' AS contact_type\nFROM customers\nWHERE is_active = 1\nUNION\nSELECT CONCAT(first_name, ' ', last_name), 'sales_rep'\nFROM employees\nWHERE department = 'Sales';"}
+        ]}
       ]
     },
     {
@@ -713,7 +828,20 @@
           code:"SELECT\n    signup_txt,\n    STR_TO_DATE(signup_txt, '%m/%d/%Y') AS signup_date_parsed\nFROM stg_customers_raw\nWHERE TRIM(signup_txt) != '';"},
         {h:"Finding duplicates with ROW_NUMBER", body:"<p>GROUP BY + HAVING COUNT(*) &gt; 1 tells you duplicates exist. ROW_NUMBER() OVER (PARTITION BY ... ORDER BY raw_id) tags every row with its rank inside its duplicate group, so you can later keep only rank 1 — the technique Module 7's cleaning view is built on.</p>",
           code:"SELECT raw_id, full_name, email_addr,\n    ROW_NUMBER() OVER (\n        PARTITION BY LOWER(TRIM(email_addr))\n        ORDER BY raw_id\n    ) AS dup_rank\nFROM stg_customers_raw\nWHERE TRIM(email_addr) != '';"},
-        {h:"Practice", ex:["Clean stg_orders_raw's status, date, and quantity columns into real types in one query.","Identify duplicate rows in stg_orders_raw sharing email + date + product.","Using ROW_NUMBER, return only one copy of each duplicate group."]}
+        {h:"Practice", exercises:[
+          {q:"Write a query against stg_orders_raw that outputs: a cleaned lowercase/trimmed status, a real DATE from order_date_txt, and qty_txt cast to an integer.",
+           hint:"LOWER(TRIM(...)) standardizes text; STR_TO_DATE(col, '%m/%d/%Y') parses the date; CAST(col AS UNSIGNED) converts text to an integer.",
+           solution:"SELECT\n    raw_id,\n    customer_email,\n    LOWER(TRIM(status_txt)) AS status_clean,\n    STR_TO_DATE(order_date_txt, '%m/%d/%Y') AS order_date_clean,\n    CAST(qty_txt AS UNSIGNED) AS quantity_clean\nFROM stg_orders_raw;"},
+          {q:"Identify duplicate rows in stg_orders_raw — two rows count as duplicates if they share the same customer_email, order_date_txt, and product_name.",
+           hint:"GROUP BY the exact columns that define \"the same record\", then HAVING COUNT(*) > 1 surfaces the groups with more than one row.",
+           solution:"SELECT customer_email, order_date_txt, product_name, COUNT(*) AS occurrences\nFROM stg_orders_raw\nGROUP BY customer_email, order_date_txt, product_name\nHAVING COUNT(*) > 1;"},
+          {q:"Using ROW_NUMBER() PARTITION BY the same fields as above, write a query that returns only ONE copy of each duplicate group (dup_rank = 1).",
+           hint:"Wrap the ROW_NUMBER() query in a subquery, then filter the outer query WHERE dup_rank = 1.",
+           solution:"SELECT * FROM (\n    SELECT\n        raw_id, customer_email, order_date_txt, status_txt, product_name, qty_txt,\n        ROW_NUMBER() OVER (\n            PARTITION BY customer_email, order_date_txt, product_name\n            ORDER BY raw_id\n        ) AS dup_rank\n    FROM stg_orders_raw\n) AS ranked\nWHERE dup_rank = 1;"},
+          {q:"stg_customers_raw has one fully blank/junk row. Write a query that filters staging down to only usable rows: full_name not blank AND email_addr not blank.",
+           hint:"A blank string '' passes an IS NOT NULL check — you need TRIM(col) != '' as well.",
+           solution:"SELECT *\nFROM stg_customers_raw\nWHERE TRIM(full_name) != '' AND TRIM(email_addr) != '';"}
+        ]}
       ]
     },
     {
@@ -725,7 +853,17 @@
           code:"CREATE OR REPLACE VIEW vw_stg_customers_clean AS\nSELECT\n    raw_id,\n    TRIM(full_name) AS full_name,\n    LOWER(TRIM(email_addr)) AS email,\n    STR_TO_DATE(TRIM(signup_txt), '%m/%d/%Y') AS signup_date,\n    ROW_NUMBER() OVER (\n        PARTITION BY LOWER(TRIM(email_addr)) ORDER BY raw_id\n    ) AS dup_rank\nFROM stg_customers_raw\nWHERE TRIM(full_name) != '' AND TRIM(email_addr) != '';"},
         {h:"Idempotent loads", body:"<p>Pipelines get re-run — retries, backfills, a scheduler that fired twice. An INSERT ... SELECT that checks <code>NOT EXISTS</code> against production by a stable business key (email, not an ID staging can't know) is safe to run more than once without duplicating data. ON DUPLICATE KEY UPDATE gives you the same safety for an insert-or-update ('upsert') in a single statement.</p>"},
         {h:"Transactions", body:"<p>START TRANSACTION / COMMIT / ROLLBACK make a multi-statement load all-or-nothing, so a failure halfway through never leaves the database half-loaded.</p>"},
-        {h:"Practice", ex:["Build vw_stg_orders_clean: trimmed/lowercased status, parsed date, integer quantity, duplicate ranking.","Load new order headers into orders from that view, resolving customer_email to customer_id.","Explain in your own words why NOT EXISTS against production matters even though staging looks clean."]}
+        {h:"Practice", exercises:[
+          {q:"Build a view vw_stg_orders_clean over stg_orders_raw that: trims/lowercases status, parses order_date_txt into a real DATE, casts qty_txt to an integer, and uses ROW_NUMBER to tag duplicates (partition by customer_email, order_date_txt, product_name).",
+           hint:"Mirror the vw_stg_customers_clean view from the lesson, but change what the ROW_NUMBER window partitions by to match this table's duplicate definition.",
+           solution:"CREATE OR REPLACE VIEW vw_stg_orders_clean AS\nSELECT\n    raw_id,\n    LOWER(TRIM(customer_email)) AS customer_email,\n    STR_TO_DATE(TRIM(order_date_txt), '%m/%d/%Y') AS order_date,\n    LOWER(TRIM(status_txt)) AS status,\n    TRIM(product_name) AS product_name,\n    CAST(qty_txt AS UNSIGNED) AS quantity,\n    ROW_NUMBER() OVER (\n        PARTITION BY LOWER(TRIM(customer_email)), order_date_txt, TRIM(product_name)\n        ORDER BY raw_id\n    ) AS dup_rank\nFROM stg_orders_raw;"},
+          {q:"Using that view (dup_rank = 1 only, customer_email not blank), write an INSERT ... SELECT that loads new rows into orders, resolving customer_email to customers.customer_id via a JOIN. Default status to the cleaned status value.",
+           hint:"JOIN the view to customers on email to get customer_id, and guard against re-inserting the same order with a NOT EXISTS check against orders already loaded for that customer/date.",
+           solution:"INSERT INTO orders (customer_id, order_date, status)\nSELECT DISTINCT\n    c.customer_id,\n    v.order_date,\n    CASE WHEN v.status IN ('pending','shipped','delivered','cancelled')\n         THEN v.status ELSE 'pending' END\nFROM vw_stg_orders_clean v\nJOIN customers c ON c.email = v.customer_email\nWHERE v.dup_rank = 1\n  AND v.customer_email != ''\n  AND NOT EXISTS (\n      SELECT 1 FROM orders o\n      WHERE o.customer_id = c.customer_id AND o.order_date = v.order_date\n  );"},
+          {q:"Explain in your own words why the NOT EXISTS check against production matters even though staging looks clean.",
+           hint:"Think about what happens if this exact load script gets run a second time — by a retry, a backfill, or a scheduler that double-fired.",
+           note:"Staging almost always represents an incremental batch that pipelines re-run for retries, backfills, or duplicate scheduler triggers. Without checking production first, re-running the same load would insert the same customers/orders again, silently duplicating revenue and record counts. Checking NOT EXISTS against a stable business key (email, not an auto-increment ID staging can't know) makes the load idempotent — safe to run more than once with the same result."}
+        ]}
       ]
     },
     {
@@ -737,7 +875,20 @@
           code:"SELECT * FROM (\n    SELECT product_name, category, unit_price,\n        RANK() OVER (PARTITION BY category ORDER BY unit_price DESC) AS rnk\n    FROM products\n) ranked\nWHERE rnk <= 2;"},
         {h:"Running totals & LAG", body:"<p>SUM() OVER (ORDER BY ...) with no partition gives a running total. LAG() looks at the previous row in an ordering — the standard way to compute month-over-month change.</p>",
           code:"SELECT order_month, monthly_revenue,\n    ROUND((monthly_revenue - LAG(monthly_revenue) OVER (ORDER BY order_month))\n          / LAG(monthly_revenue) OVER (ORDER BY order_month) * 100, 1) AS pct_growth\nFROM monthly_revenue_table;"},
-        {h:"Practice", ex:["Find each customer's first and most recent order date using MIN/MAX OVER, no GROUP BY.","Rank customers by lifetime spend and return the top 5.","For each order, compute what % of that customer's lifetime spend it represents."]}
+        {h:"Practice", exercises:[
+          {q:"Find each customer's FIRST order date and MOST RECENT order date, and the number of days between them, using window functions — don't use GROUP BY.",
+           hint:"MIN() and MAX() work as window functions too: MIN(col) OVER (PARTITION BY customer_id) returns the same value on every row for that customer, so pair it with DISTINCT.",
+           solution:"SELECT DISTINCT\n    customer_id,\n    MIN(order_date) OVER (PARTITION BY customer_id) AS first_order,\n    MAX(order_date) OVER (PARTITION BY customer_id) AS last_order,\n    DATEDIFF(\n        MAX(order_date) OVER (PARTITION BY customer_id),\n        MIN(order_date) OVER (PARTITION BY customer_id)\n    ) AS days_active\nFROM orders;"},
+          {q:"Rank customers by total lifetime spend, overall (not per category), and return only the top 5.",
+           hint:"RANK() OVER (ORDER BY total spend DESC) numbers every customer; wrap it in a subquery so you can filter WHERE rank <= 5.",
+           solution:"SELECT customer_id, total_spent, spend_rank FROM (\n    SELECT\n        o.customer_id,\n        SUM(oi.quantity * oi.unit_price) AS total_spent,\n        RANK() OVER (ORDER BY SUM(oi.quantity * oi.unit_price) DESC) AS spend_rank\n    FROM orders o\n    JOIN order_items oi ON oi.order_id = o.order_id\n    GROUP BY o.customer_id\n) AS ranked\nWHERE spend_rank <= 5;"},
+          {q:"Compute month-over-month revenue GROWTH RATE (percentage), using LAG.",
+           hint:"LAG(value) OVER (ORDER BY month) gets the previous row's value; percent change is (this - prev) / prev * 100.",
+           solution:"SELECT\n    order_month,\n    monthly_revenue,\n    LAG(monthly_revenue) OVER (ORDER BY order_month) AS prev_month,\n    ROUND(\n        (monthly_revenue - LAG(monthly_revenue) OVER (ORDER BY order_month))\n        / LAG(monthly_revenue) OVER (ORDER BY order_month) * 100\n    , 1) AS pct_growth\nFROM (\n    SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS order_month,\n           SUM(oi.quantity * oi.unit_price) AS monthly_revenue\n    FROM orders o\n    JOIN order_items oi ON oi.order_id = o.order_id\n    GROUP BY order_month\n) AS monthly;"},
+          {q:"For each order, compute what % of that customer's total lifetime spend this single order represents.",
+           hint:"SUM(order_total) OVER (PARTITION BY customer_id) gives you the customer's lifetime total on every one of their rows, right alongside the per-order total.",
+           solution:"SELECT\n    order_id, customer_id, order_total,\n    ROUND(order_total / SUM(order_total) OVER (PARTITION BY customer_id) * 100, 1) AS pct_of_customer_lifetime\nFROM (\n    SELECT o.order_id, o.customer_id, SUM(oi.quantity * oi.unit_price) AS order_total\n    FROM orders o\n    JOIN order_items oi ON oi.order_id = o.order_id\n    GROUP BY o.order_id, o.customer_id\n) AS order_totals;"}
+        ]}
       ]
     },
     {
@@ -748,7 +899,20 @@
         {h:"CTEs over nested subqueries", body:"<p>A CTE is a named, temporary result set referenced later in the same query. Chaining several turns a tangled nested-subquery query into a readable, step-by-step narrative — prefer CTEs once you're past two levels of nesting.</p>",
           code:"WITH order_totals AS (\n    SELECT o.order_id, o.customer_id,\n           SUM(oi.quantity*oi.unit_price) AS order_total\n    FROM orders o JOIN order_items oi ON oi.order_id=o.order_id\n    GROUP BY o.order_id, o.customer_id\n)\nSELECT customer_id, SUM(order_total) AS lifetime_value\nFROM order_totals\nGROUP BY customer_id\nORDER BY lifetime_value DESC;"},
         {h:"Indexes & EXPLAIN", body:"<p>An index lets MySQL find matching rows without scanning the whole table. EXPLAIN shows whether a query is using one. Index columns you filter, join, or sort on frequently, on tables with real volume — every index speeds up reads but slows down writes.</p>"},
-        {h:"Practice", ex:["Rewrite the 'top 2 per category' query from Module 8 using a CTE.","Write sp_customer_lifetime_value(IN cust_id INT) as a stored procedure.","Explain which index would help SELECT * FROM order_items WHERE order_id = 42 on a large table."]}
+        {h:"Practice", exercises:[
+          {q:"Rewrite the \"top 2 most expensive products per category\" query from Module 8 using a CTE instead of a bare subquery.",
+           hint:"Move the RANK() query into a WITH clause, then SELECT from it in the main query with a WHERE on the rank — same logic, easier to read top-to-bottom.",
+           solution:"WITH ranked_products AS (\n    SELECT\n        product_name, category, unit_price,\n        RANK() OVER (PARTITION BY category ORDER BY unit_price DESC) AS rank_in_category\n    FROM products\n)\nSELECT * FROM ranked_products WHERE rank_in_category <= 2;"},
+          {q:"Write a stored procedure sp_customer_lifetime_value(IN cust_id INT) that returns a single customer's total lifetime spend, number of orders, and average order value.",
+           hint:"DELIMITER // switches the statement terminator so semicolons inside the procedure body don't end the CREATE PROCEDURE statement early; switch it back with DELIMITER ; afterward.",
+           solution:"DELIMITER //\nCREATE PROCEDURE sp_customer_lifetime_value(IN cust_id INT)\nBEGIN\n    SELECT\n        c.customer_id, c.first_name, c.last_name,\n        COUNT(DISTINCT o.order_id) AS num_orders,\n        SUM(oi.quantity * oi.unit_price) AS lifetime_value,\n        AVG(order_totals.order_total) AS avg_order_value\n    FROM customers c\n    JOIN orders o ON o.customer_id = c.customer_id\n    JOIN order_items oi ON oi.order_id = o.order_id\n    JOIN (\n        SELECT order_id, SUM(quantity * unit_price) AS order_total\n        FROM order_items GROUP BY order_id\n    ) AS order_totals ON order_totals.order_id = o.order_id\n    WHERE c.customer_id = cust_id\n    GROUP BY c.customer_id, c.first_name, c.last_name;\nEND //\nDELIMITER ;\n-- CALL sp_customer_lifetime_value(5);"},
+          {q:"Add an index that would help this query run faster on a large table, and explain why: SELECT * FROM order_items WHERE order_id = 42;",
+           hint:"MySQL does NOT automatically index foreign key columns — what column is this query filtering on?",
+           solution:"CREATE INDEX idx_order_items_order_id ON order_items(order_id);\n-- order_items.order_id is a foreign key queried directly here and joined on\n-- constantly elsewhere. Without an index, every lookup is a full table scan."},
+          {q:"Extend the audit trigger idea: create a trigger that rejects any order_items row with quantity <= 0 from being inserted, as a belt-and-suspenders check alongside the CHECK constraint from Module 2.",
+           hint:"A BEFORE INSERT trigger can inspect NEW.quantity and use SIGNAL SQLSTATE '45000' to raise a custom error, stopping the insert before it happens.",
+           solution:"DELIMITER //\nCREATE TRIGGER trg_order_items_qty_check\nBEFORE INSERT ON order_items\nFOR EACH ROW\nBEGIN\n    IF NEW.quantity <= 0 THEN\n        SIGNAL SQLSTATE '45000'\n        SET MESSAGE_TEXT = 'order_items.quantity must be greater than 0';\n    END IF;\nEND //\nDELIMITER ;"}
+        ]}
       ]
     },
     {
@@ -756,10 +920,18 @@
       meta:["10_capstone_projects.sql","4 projects","Portfolio-ready"],
       desc:"Everything from Modules 1-9, combined into end-to-end work you can put in a portfolio: schema design, a full ETL pipeline, a written EDA report, and a reporting layer.",
       sections:[
-        {h:"1 · Schema design — add a Returns feature", body:"<p>Design and build a <code>returns</code> table tied to order_items, following the course's naming conventions, with a status ENUM and a CHECK constraint. Prove it with a return-rate-by-category query.</p>"},
-        {h:"2 · Full staging → production ETL", body:"<p>Module 7 loaded order headers but not line items — finish the pipeline: resolve product names to IDs, wrap the load in a transaction, and verify no staged order is missing its items.</p>"},
-        {h:"3 · Exploratory data analysis report", body:"<p>A 5-part written + SQL analysis: revenue trend with MoM growth, top 5 customers and their share of revenue, top products by revenue vs. units, repeat purchase rate, and category revenue mix.</p>"},
-        {h:"4 · Reporting & performance layer", body:"<p>Turn the ad-hoc EDA queries into reusable assets: a <code>vw_monthly_business_summary</code> view, a parameterized <code>sp_top_customers</code> procedure, and indexes you can justify.</p>"}
+        {h:"1 · Schema design — add a Returns feature", body:"<p>Design and build a <code>returns</code> table tied to order_items, following the course's naming conventions, with a status ENUM and a CHECK constraint. Prove it with a return-rate-by-category query.</p>",
+          hint:"Every return belongs to exactly one order_item, so that's your foreign key. You need a return_qty that can't exceed what was ordered, a status (requested/approved/rejected/refunded), and a refund_amount. For the proof query, LEFT JOIN returns onto order_items so products with zero returns still show a 0% rate instead of disappearing.",
+          solution:"CREATE TABLE returns (\n    return_id      INT AUTO_INCREMENT PRIMARY KEY,\n    order_item_id  INT NOT NULL,\n    reason         VARCHAR(255),\n    status         ENUM('requested','approved','rejected','refunded') NOT NULL DEFAULT 'requested',\n    return_qty     INT NOT NULL,\n    refund_amount  DECIMAL(10,2) NOT NULL DEFAULT 0,\n    return_date    DATE NOT NULL,\n    CONSTRAINT fk_returns_order_item FOREIGN KEY (order_item_id) REFERENCES order_items(order_item_id),\n    CONSTRAINT chk_return_qty_positive CHECK (return_qty > 0)\n);\n\n-- Return rate by category (# returned units / # sold units)\nSELECT\n    p.category,\n    SUM(oi.quantity) AS units_sold,\n    COALESCE(SUM(r.return_qty), 0) AS units_returned,\n    ROUND(COALESCE(SUM(r.return_qty), 0) / SUM(oi.quantity) * 100, 1) AS return_rate_pct\nFROM order_items oi\nJOIN products p ON p.product_id = oi.product_id\nLEFT JOIN returns r ON r.order_item_id = oi.order_item_id\nGROUP BY p.category\nORDER BY return_rate_pct DESC;"},
+        {h:"2 · Full staging → production ETL", body:"<p>Module 7 loaded order headers but not line items — finish the pipeline: resolve product names to IDs, wrap the load in a transaction, and verify no staged order is missing its items.</p>",
+          hint:"Before loading anything, run a sanity check: LEFT JOIN the staging view's product_name against products and see if any come back unmatched — if so, stop and fix spelling before you load. Then join through customers -> orders -> products to resolve every foreign key, and guard the insert with NOT EXISTS so re-running the script doesn't duplicate line items.",
+          solution:"-- Step 1: sanity check for unmatched product names BEFORE loading\nSELECT DISTINCT v.product_name\nFROM vw_stg_orders_clean v\nLEFT JOIN products p ON p.product_name = v.product_name\nWHERE p.product_id IS NULL;\n\n-- Step 2: the load, wrapped in a transaction\nSTART TRANSACTION;\n\nINSERT INTO order_items (order_id, product_id, quantity, unit_price)\nSELECT\n    o.order_id, p.product_id, v.quantity, p.unit_price\nFROM vw_stg_orders_clean v\nJOIN customers c ON c.email = v.customer_email\nJOIN orders o     ON o.customer_id = c.customer_id AND o.order_date = v.order_date\nJOIN products p    ON p.product_name = v.product_name\nWHERE v.dup_rank = 1\n  AND NOT EXISTS (\n      SELECT 1 FROM order_items oi2\n      WHERE oi2.order_id = o.order_id AND oi2.product_id = p.product_id\n  );\n\nCOMMIT;"},
+        {h:"3 · Exploratory data analysis report", body:"<p>A 5-part written + SQL analysis: revenue trend with MoM growth, top 5 customers and their share of revenue, top products by revenue vs. units, repeat purchase rate, and category revenue mix.</p>",
+          hint:"Each part reuses a technique from Module 8: LAG() for month-over-month growth, RANK() for the top-5 customers (plus a window SUM() for their share of total revenue), two separate ORDER BY/LIMIT queries for revenue vs. units, a CASE+AVG for repeat purchase rate, and SUM() OVER () with no PARTITION BY for revenue share by category.",
+          solution:"-- 1. Monthly revenue + MoM growth\nSELECT order_month, monthly_revenue,\n    ROUND((monthly_revenue - LAG(monthly_revenue) OVER (ORDER BY order_month))\n          / LAG(monthly_revenue) OVER (ORDER BY order_month) * 100, 1) AS mom_growth_pct\nFROM (\n    SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS order_month,\n           SUM(oi.quantity * oi.unit_price) AS monthly_revenue\n    FROM orders o JOIN order_items oi ON oi.order_id = o.order_id\n    GROUP BY order_month\n) AS m;\n\n-- 4. Repeat purchase rate\nSELECT\n    ROUND(SUM(CASE WHEN order_count > 1 THEN 1 ELSE 0 END) / COUNT(*) * 100, 1) AS repeat_purchase_rate_pct\nFROM (\n    SELECT customer_id, COUNT(*) AS order_count\n    FROM orders GROUP BY customer_id\n) AS per_customer;\n\n-- 5. Revenue share by category\nSELECT\n    p.category,\n    SUM(oi.quantity * oi.unit_price) AS revenue,\n    ROUND(SUM(oi.quantity * oi.unit_price) / SUM(SUM(oi.quantity * oi.unit_price)) OVER () * 100, 1) AS pct_of_revenue\nFROM order_items oi JOIN products p ON p.product_id = oi.product_id\nGROUP BY p.category\nORDER BY revenue DESC;\n\n-- Parts 2 and 3 (top customers, top products) are the full worked\n-- examples in sql/10_capstone_projects.sql."},
+        {h:"4 · Reporting & performance layer", body:"<p>Turn the ad-hoc EDA queries into reusable assets: a <code>vw_monthly_business_summary</code> view, a parameterized <code>sp_top_customers</code> procedure, and indexes you can justify.</p>",
+          hint:"The view is just Capstone 3's monthly revenue query saved with CREATE VIEW so anyone can SELECT * FROM it. The procedure wraps a parameterized version of the top-customers ranking behind a CALL. For indexes, look at whichever columns show up in WHERE, JOIN ON, and GROUP BY across all four capstones.",
+          solution:"CREATE OR REPLACE VIEW vw_monthly_business_summary AS\nSELECT\n    DATE_FORMAT(o.order_date, '%Y-%m') AS order_month,\n    SUM(oi.quantity * oi.unit_price) AS revenue,\n    COUNT(DISTINCT o.order_id) AS order_count,\n    ROUND(SUM(oi.quantity * oi.unit_price) / COUNT(DISTINCT o.order_id), 2) AS avg_order_value\nFROM orders o\nJOIN order_items oi ON oi.order_id = o.order_id\nGROUP BY order_month;\n\nDELIMITER //\nCREATE PROCEDURE sp_top_customers(IN limit_n INT)\nBEGIN\n    SELECT c.first_name, c.last_name, SUM(oi.quantity * oi.unit_price) AS lifetime_value\n    FROM customers c\n    JOIN orders o ON o.customer_id = c.customer_id\n    JOIN order_items oi ON oi.order_id = o.order_id\n    GROUP BY c.customer_id, c.first_name, c.last_name\n    ORDER BY lifetime_value DESC\n    LIMIT limit_n;\nEND //\nDELIMITER ;\n-- CALL sp_top_customers(5);"}
       ]
     }
   ];
@@ -858,10 +1030,41 @@
                 '<button class="try-btn" type="button" data-try-id="' + tryId + '">&#9654; Try it in Console</button></div>';
         tryButtons.push({ id: tryId, code: s.code });
       }
-      if(s.ex){
-        html += '<details class="exwrap"><summary>Your turn — ' + s.ex.length + ' exercises</summary>' +
-                '<div class="exbody"><ol>' + s.ex.map(function(e){ return '<li>' + e + '</li>'; }).join("") + '</ol>' +
-                '<p style="margin-top:10px;color:var(--ink-soft);font-size:.82rem;">Full solutions are in <span class="file-chip"><b>sql/' + m.meta[0] + '</b></span> — work the exercises yourself before checking.</p></div></details>';
+      if(s.hint || s.solution){
+        html += '<div class="ex-actions" style="margin-bottom:10px;">';
+        if(s.hint){
+          html += '<details class="hint-wrap"><summary>&#128161; Hint</summary><div class="hint-body">' + s.hint + '</div></details>';
+        }
+        if(s.solution){
+          var capTryId = "cap-" + m.id + "-" + idx;
+          html += '<details class="soln-wrap"><summary>&#9989; Solution sketch</summary><div class="soln-body">' +
+                  '<pre class="code"><code class="language-sql">' + s.solution.replace(/&/g,"&amp;").replace(/</g,"&lt;") + '</code></pre>' +
+                  '<button class="try-btn" type="button" data-try-id="' + capTryId + '">&#9654; Try it in Console</button></div></details>';
+          tryButtons.push({ id: capTryId, code: s.solution });
+        }
+        html += '</div>';
+      }
+      if(s.exercises){
+        html += '<details class="exwrap"><summary>Your turn — ' + s.exercises.length + ' exercises, with hints and solutions</summary><div class="exbody">';
+        html += '<ul class="ex-list">';
+        s.exercises.forEach(function(item, exIdx){
+          html += '<li class="ex-item"><div class="ex-q"><b>' + (exIdx+1) + '.</b>' + item.q + '</div><div class="ex-actions">';
+          html += '<details class="hint-wrap"><summary>&#128161; Hint</summary><div class="hint-body">' + item.hint + '</div></details>';
+          if(item.solution){
+            var exTryId = "ex-" + m.id + "-" + idx + "-" + exIdx;
+            html += '<details class="soln-wrap"><summary>&#9989; Solution</summary><div class="soln-body">' +
+                    '<pre class="code"><code class="language-sql">' + item.solution.replace(/&/g,"&amp;").replace(/</g,"&lt;") + '</code></pre>' +
+                    '<button class="try-btn" type="button" data-try-id="' + exTryId + '">&#9654; Try it in Console</button>' +
+                    '</div></details>';
+            tryButtons.push({ id: exTryId, code: item.solution });
+          } else {
+            html += '<details class="soln-wrap"><summary>&#9989; Solution</summary><div class="soln-body">' + (item.note || "This one's a written explanation, not a query — see the module file's SOLUTIONS section.") + '</div></details>';
+          }
+          html += '</div></li>';
+        });
+        html += '</ul>';
+        html += '<p class="ex-file-note">These also live in <span class="file-chip"><b>sql/' + m.meta[0] + '</b></span> if you’d rather work in your own MySQL client.</p>';
+        html += '</div></details>';
       }
       html += '</div>';
     });
